@@ -1,13 +1,16 @@
-﻿using System.Text;
+﻿using Microsoft.Extensions.Caching.Memory;
+using System.Text;
 using System.Text.Json;
 
 namespace JsonVault
 {
-    public class JsonVault
+    public class JsonVault : IDisposable
     {
         private VaultManifest _manifest = new();
         private string _manifestFile = string.Empty;
         private string _jsonStoreDirectory = string.Empty;
+
+        private MemoryCache _cache = new(new MemoryCacheOptions());
 
         /// <summary>
         /// Load vault from manifest.
@@ -26,10 +29,19 @@ namespace JsonVault
             using (var file = new FileStream(filepath, FileMode.Open, FileAccess.Read))
                 _manifest = await JsonSerializer.DeserializeAsync<VaultManifest>(file) ?? new();
 
-            _jsonStoreDirectory = Path.Combine(new FileInfo(filepath).Directory.FullName, _manifest.DirectoryName);
+            _jsonStoreDirectory = Path.Combine(GetParentDirectoryFullPath(filepath), _manifest.DirectoryName);
 
             if (!ValidateChildJsons())
                 throw new Exception();
+        }
+
+        private string GetParentDirectoryFullPath(string filepath)
+        { 
+            var parent = new FileInfo(filepath).Directory;
+            if (parent == null)
+                throw new Exception();
+        
+            return parent.FullName;
         }
 
         private bool ValidateChildJsons()
@@ -53,7 +65,7 @@ namespace JsonVault
         {
             _manifest = new();
             _manifestFile = new FileInfo(filepath).FullName;
-            _jsonStoreDirectory = Path.Combine(new FileInfo(filepath).Directory.FullName, directoryName);
+            _jsonStoreDirectory = Path.Combine(GetParentDirectoryFullPath(filepath), directoryName);
 
             if (!Directory.Exists(_jsonStoreDirectory))
                 Directory.CreateDirectory(_jsonStoreDirectory);
@@ -90,7 +102,8 @@ namespace JsonVault
                 Name = strUuid
             });;
 
-            await File.WriteAllTextAsync(Path.Combine(_jsonStoreDirectory, strUuid), jsonFile);
+            await File.WriteAllTextAsync(Path.Combine(_jsonStoreDirectory, strUuid), jsonFile, encoding);
+            _cache.Set(identifier, jsonFile);
         }
 
         /// <summary>
@@ -100,6 +113,9 @@ namespace JsonVault
         /// <returns>null (no exact identifier file) or file content</returns>
         public async Task<string?> GetAsync(string identifier, Encoding encoding)
         {
+            if (_cache.TryGetValue(identifier, out string cachedfile))
+                return cachedfile;
+
             var file = _manifest.Files.Where(v => v.Identifier == identifier);
 
             if (file.Count() == 0)
@@ -107,7 +123,11 @@ namespace JsonVault
 
             string uuid = file.First().Name;
 
-            return await File.ReadAllTextAsync(Path.Combine(_jsonStoreDirectory, uuid));
+            string actualfile = await File.ReadAllTextAsync(Path.Combine(_jsonStoreDirectory, uuid), encoding);
+
+            _cache.Set(identifier, actualfile);
+
+            return actualfile;
         }
 
         /// <summary>
@@ -127,8 +147,14 @@ namespace JsonVault
             File.Delete(Path.Combine(_jsonStoreDirectory, uuid));
 
             _manifest.Files.RemoveAll(v => v.Identifier == identifier);
+            _cache.Remove(identifier);
 
             return true;
+        }
+
+        public void Dispose()
+        {
+            _cache.Dispose();
         }
     }
 }
