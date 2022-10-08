@@ -1,19 +1,28 @@
-﻿using System.ComponentModel;
+﻿using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace JsonVault
 {
     public class JsonVault
     {
-        private List<VaultManifest> _manifests;
-        private string _jsonStoreDirectory;
+        private List<VaultManifest> _manifests = new();
+        private string _manifestFile = string.Empty;
+        private string _jsonStoreDirectory = string.Empty;
 
+        /// <summary>
+        /// Load vault from manifest and vault name.
+        /// </summary>
+        /// <param name="filepath">vault manifest file path</param>
+        /// <param name="vaultName"></param>
+        /// <returns></returns>
+        /// <exception cref="FileNotFoundException"></exception>
+        /// <exception cref="Exception">vault name</exception>
         public async Task LoadVauldAsync(string filepath, string vaultName)
         { 
             if (!File.Exists(filepath))
                 throw new FileNotFoundException();
 
+            _manifestFile = new FileInfo(filepath).FullName;
             _jsonStoreDirectory = Path.Combine(new FileInfo(filepath).Directory.FullName, vaultName);
 
             using (var file = new FileStream(filepath, FileMode.Open, FileAccess.Read))
@@ -34,23 +43,37 @@ namespace JsonVault
             return true;
         }
 
+        /// <summary>
+        /// Create vault with manifest file path and vault name.
+        /// </summary>
+        /// <param name="filepath">manifest file path</param>
+        /// <param name="vaultName">vault name</param>
+        /// <returns></returns>
         public async Task CreateVault(string filepath, string vaultName)
         {
             _manifests = new();
+            _manifestFile = new FileInfo(filepath).FullName;
             _jsonStoreDirectory = Path.Combine(new FileInfo(filepath).Directory.FullName, vaultName);
-            await SaveVaultAsync(filepath);
+            await SaveVaultAsync();
 
             if (!Directory.Exists(_jsonStoreDirectory))
                 Directory.CreateDirectory(_jsonStoreDirectory);
         }
 
-        public async Task SaveVaultAsync(string filepath)
+        public async Task SaveVaultAsync()
         {
             string jsonManifest = JsonSerializer.Serialize(_manifests);
-            await File.WriteAllTextAsync(filepath, jsonManifest);
+            await File.WriteAllTextAsync(_manifestFile, jsonManifest);
         }
 
-        public async Task AddAsync(string identifier, string jsonFile)
+        /// <summary>
+        /// Add json/text data with encoding.
+        /// </summary>
+        /// <param name="identifier">Unique string id</param>
+        /// <param name="jsonFile">Raw content</param>
+        /// <param name="encoding">Encoding</param>
+        /// <exception cref="Exception"></exception>
+        public async Task AddAsync(string identifier, string jsonFile, Encoding encoding)
         {
             if (_manifests.Any(v => v.Identifier == identifier))
             {
@@ -68,7 +91,12 @@ namespace JsonVault
             await File.WriteAllTextAsync(Path.Combine(_jsonStoreDirectory, strUuid + ".json"), jsonFile);
         }
 
-        public async Task<string?> GetAsync(string identifier)
+        /// <summary>
+        /// Get file with identifier.
+        /// </summary>
+        /// <param name="identifier">Unique string id</param>
+        /// <returns>null (no exact identifier file) or file content</returns>
+        public async Task<string?> GetAsync(string identifier, Encoding encoding)
         {
             var file = _manifests.Where(v => v.Identifier == identifier);
 
@@ -80,6 +108,11 @@ namespace JsonVault
             return await File.ReadAllTextAsync(Path.Combine(_jsonStoreDirectory, uuid + ".json"));
         }
 
+        /// <summary>
+        /// Delete file with identifier
+        /// </summary>
+        /// <param name="identifier">Unique string id</param>
+        /// <returns>Success or not</returns>
         public bool Delete(string identifier)
         {
             var file = _manifests.Where(v => v.Identifier == identifier);
