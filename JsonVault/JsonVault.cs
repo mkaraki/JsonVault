@@ -5,28 +5,28 @@ namespace JsonVault
 {
     public class JsonVault
     {
-        private List<VaultManifest> _manifests = new();
+        private VaultManifest _manifest = new();
         private string _manifestFile = string.Empty;
         private string _jsonStoreDirectory = string.Empty;
 
         /// <summary>
-        /// Load vault from manifest and vault name.
+        /// Load vault from manifest.
         /// </summary>
         /// <param name="filepath">vault manifest file path</param>
-        /// <param name="vaultName"></param>
         /// <returns></returns>
         /// <exception cref="FileNotFoundException"></exception>
         /// <exception cref="Exception">vault name</exception>
-        public async Task LoadVauldAsync(string filepath, string vaultName)
+        public async Task LoadVauldAsync(string filepath)
         { 
             if (!File.Exists(filepath))
                 throw new FileNotFoundException();
 
             _manifestFile = new FileInfo(filepath).FullName;
-            _jsonStoreDirectory = Path.Combine(new FileInfo(filepath).Directory.FullName, vaultName);
 
             using (var file = new FileStream(filepath, FileMode.Open, FileAccess.Read))
-                _manifests = await JsonSerializer.DeserializeAsync<List<VaultManifest>>(file) ?? new();
+                _manifest = await JsonSerializer.DeserializeAsync<VaultManifest>(file) ?? new();
+
+            _jsonStoreDirectory = Path.Combine(new FileInfo(filepath).Directory.FullName, _manifest.DirectoryName);
 
             if (!ValidateChildJsons())
                 throw new Exception();
@@ -34,9 +34,9 @@ namespace JsonVault
 
         private bool ValidateChildJsons()
         {
-            foreach (var jsonFile in _manifests)
+            foreach (var jsonFile in _manifest.Files)
             {
-                if (!File.Exists(Path.Combine(_jsonStoreDirectory, jsonFile.Name + ".json")))
+                if (!File.Exists(Path.Combine(_jsonStoreDirectory, jsonFile.Name)))
                     return false;
             }
 
@@ -44,25 +44,27 @@ namespace JsonVault
         }
 
         /// <summary>
-        /// Create vault with manifest file path and vault name.
+        /// Create vault with manifest file path and file directory name
         /// </summary>
         /// <param name="filepath">manifest file path</param>
-        /// <param name="vaultName">vault name</param>
+        /// <param name="directoryName">file directory name</param>
         /// <returns></returns>
-        public async Task CreateVault(string filepath, string vaultName)
+        public async Task CreateVault(string filepath, string directoryName)
         {
-            _manifests = new();
+            _manifest = new();
             _manifestFile = new FileInfo(filepath).FullName;
-            _jsonStoreDirectory = Path.Combine(new FileInfo(filepath).Directory.FullName, vaultName);
-            await SaveVaultAsync();
+            _jsonStoreDirectory = Path.Combine(new FileInfo(filepath).Directory.FullName, directoryName);
 
             if (!Directory.Exists(_jsonStoreDirectory))
                 Directory.CreateDirectory(_jsonStoreDirectory);
+            
+            _manifest.DirectoryName = directoryName;
+            await SaveVaultAsync();
         }
 
         public async Task SaveVaultAsync()
         {
-            string jsonManifest = JsonSerializer.Serialize(_manifests);
+            string jsonManifest = JsonSerializer.Serialize(_manifest);
             await File.WriteAllTextAsync(_manifestFile, jsonManifest);
         }
 
@@ -75,7 +77,7 @@ namespace JsonVault
         /// <exception cref="Exception"></exception>
         public async Task AddAsync(string identifier, string jsonFile, Encoding encoding)
         {
-            if (_manifests.Any(v => v.Identifier == identifier))
+            if (_manifest.Files.Any(v => v.Identifier == identifier))
             {
                 throw new Exception();
             }
@@ -83,12 +85,12 @@ namespace JsonVault
             Guid uuid = Guid.NewGuid();
             string strUuid = uuid.ToString();
 
-            _manifests.Add(new() {
+            _manifest.Files.Add(new() {
                 Identifier = identifier,
                 Name = strUuid
             });;
 
-            await File.WriteAllTextAsync(Path.Combine(_jsonStoreDirectory, strUuid + ".json"), jsonFile);
+            await File.WriteAllTextAsync(Path.Combine(_jsonStoreDirectory, strUuid), jsonFile);
         }
 
         /// <summary>
@@ -98,14 +100,14 @@ namespace JsonVault
         /// <returns>null (no exact identifier file) or file content</returns>
         public async Task<string?> GetAsync(string identifier, Encoding encoding)
         {
-            var file = _manifests.Where(v => v.Identifier == identifier);
+            var file = _manifest.Files.Where(v => v.Identifier == identifier);
 
             if (file.Count() == 0)
                 return null;
 
             string uuid = file.First().Name;
 
-            return await File.ReadAllTextAsync(Path.Combine(_jsonStoreDirectory, uuid + ".json"));
+            return await File.ReadAllTextAsync(Path.Combine(_jsonStoreDirectory, uuid));
         }
 
         /// <summary>
@@ -115,16 +117,16 @@ namespace JsonVault
         /// <returns>Success or not</returns>
         public bool Delete(string identifier)
         {
-            var file = _manifests.Where(v => v.Identifier == identifier);
+            var file = _manifest.Files.Where(v => v.Identifier == identifier);
 
             if (file.Count() == 0)
                 return false;
 
             string uuid = file.First().Name;
 
-            File.Delete(Path.Combine(_jsonStoreDirectory, uuid + ".json"));
+            File.Delete(Path.Combine(_jsonStoreDirectory, uuid));
 
-            _manifests.RemoveAll(v => v.Identifier == identifier);
+            _manifest.Files.RemoveAll(v => v.Identifier == identifier);
 
             return true;
         }

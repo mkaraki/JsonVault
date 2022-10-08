@@ -4,13 +4,23 @@ namespace JsonVault
 {
     internal class VaultManifest
     {
-        [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
-        public string Identifier { get; set; } = string.Empty;
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
-        public string Name { get; set; } = string.Empty;
+        public string DirectoryName { get; set; } = string.Empty;
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public Dictionary<string, string>? Attributes { get; set; } = null;
+        public List<FileManifest> Files { get; set; } = new List<FileManifest>();
+
+        internal class FileManifest
+        {
+
+            [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+            public string Identifier { get; set; } = string.Empty;
+
+            [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+            public string Name { get; set; } = string.Empty;
+
+            [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+            public Dictionary<string, string>? Attributes { get; set; } = null;
+
+        }
     }
 }
