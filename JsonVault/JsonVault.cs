@@ -49,7 +49,7 @@ namespace JsonVault
         /// <param name="filepath">manifest file path</param>
         /// <param name="directoryName">file directory name</param>
         /// <returns></returns>
-        public async Task CreateVault(string filepath, string directoryName)
+        public async Task CreateVaultAsync(string filepath, string directoryName)
         {
             _manifest = new();
             _manifestFile = new FileInfo(filepath).FullName;
