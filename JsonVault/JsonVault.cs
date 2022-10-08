@@ -85,7 +85,7 @@ namespace JsonVault
         /// </summary>
         /// <param name="identifier">Unique string id</param>
         /// <param name="jsonFile">Raw content</param>
-        /// <param name="encoding">Encoding</param>
+        /// <param name="encoding">Encoding in vault</param>
         /// <exception cref="Exception"></exception>
         public async Task AddAsync(string identifier, string jsonFile, Encoding encoding)
         {
@@ -107,9 +107,19 @@ namespace JsonVault
         }
 
         /// <summary>
+        /// Add json/text data with encoding.
+        /// </summary>
+        /// <param name="identifier">Unique string id</param>
+        /// <param name="jsonFile">Raw content</param>
+        /// <exception cref="Exception"></exception>
+        public async Task AddAsync(string identifier, string jsonFile)
+            => await AddAsync(identifier, jsonFile, Encoding.UTF8);
+
+        /// <summary>
         /// Get file with identifier.
         /// </summary>
         /// <param name="identifier">Unique string id</param>
+        /// <param name="encoding">Encoding in vault</param>
         /// <returns>null (no exact identifier file) or file content</returns>
         public async Task<string?> GetAsync(string identifier, Encoding encoding)
         {
@@ -129,6 +139,14 @@ namespace JsonVault
 
             return actualfile;
         }
+
+        /// <summary>
+        /// Get file with identifier.
+        /// </summary>
+        /// <param name="identifier">Unique string id</param>
+        /// <returns>null (no exact identifier file) or file content</returns>
+        public async Task<string?> GetAsync(string identifier)
+            => await GetAsync(identifier, Encoding.UTF8);
 
         /// <summary>
         /// Delete file with identifier
