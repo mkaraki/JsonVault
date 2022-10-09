@@ -31,11 +31,11 @@ using (var vault = new JsonVault())
   else
   {
     // Create Vault `vault.json` (and save files into `files` directory)
-    await vault.CreateVaultAsync("vault.json", "{\"Some\":\"Content\"}");
+    await vault.CreateVaultAsync("vault.json", "files");
   }
   
   // Add content to vault
-  await vault.AddAsync("identifier", "content");
+  await vault.AddAsync("identifier", "{\"Some\":\"Content\"}");
   
   // Get content from vault
   var content = await vault.GetAsync("identifier");
