@@ -1,4 +1,7 @@
 # JsonVault
+
+[![](https://img.shields.io/nuget/v/JsonVault)](https://www.nuget.org/packages/JsonVault)
+
 Store and cache text data with unique identifier.
 
 ## How it works
@@ -11,7 +14,7 @@ graph LR;
   
   Vault -. Identifier/UUID Table .-> Disk
   Vault-- UUID -->Disk
-  Disk-- Content -->Vault
+  Disk-- Compressed Content -->Vault
 ```
 
 ## Install
@@ -35,7 +38,7 @@ using (var vault = new JsonVault())
   }
   
   // Add content to vault
-  await vault.AddAsync("identifier", "content");
+  await vault.AddAsync("identifier", "{\"Some\":\"Content\"}");
   
   // Get content from vault
   var content = await vault.GetAsync("identifier");
