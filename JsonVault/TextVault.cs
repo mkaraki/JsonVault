@@ -12,6 +12,8 @@ namespace JsonVault
 
         protected MemoryCache _cache;
 
+        protected Dictionary<string, LockLevel> _locks = new();
+
         public TextVault(): this(new MemoryCacheOptions())
         {
         }
@@ -83,6 +85,10 @@ namespace JsonVault
             await SaveVaultAsync();
         }
 
+        /// <summary>
+        /// Save vault manifest json
+        /// </summary>
+        /// <returns></returns>
         public virtual async Task SaveVaultAsync()
         {
             string jsonManifest = JsonSerializer.Serialize(_manifest);
@@ -90,7 +96,7 @@ namespace JsonVault
         }
 
         /// <summary>
-        /// Add json/text data with encoding.
+        /// Add text data.
         /// </summary>
         /// <param name="identifier">Unique string id</param>
         /// <param name="jsonFile">Raw content</param>
@@ -100,25 +106,52 @@ namespace JsonVault
             if (Contains(identifier))
                 throw new Exception("Identifier already exist");
 
+            await UpdateAsync(identifier, jsonFile);
+        }
+
+        /// <summary>
+        /// Update text data
+        /// </summary>
+        /// <param name="identifier">Unique string id</param>
+        /// <param name="jsonFile">Raw content</param>
+        /// <returns></returns>
+        public virtual async Task UpdateAsync(string identifier, string jsonFile)
+        {
+            if (_locks.ContainsKey(identifier) && _locks[identifier] != LockLevel.None)
+                throw new Exception("Locked");
+
+            Lock(identifier, LockLevel.Exclusive);
+
             Guid uuid = Guid.NewGuid();
             string strUuid = uuid.ToString();
 
-            _manifest.Files.Add(new() {
-                Identifier = identifier,
-                Name = strUuid
-            });;
+            if (Contains(identifier))
+            {
+                strUuid = _manifest.Files.Where(v => v.Identifier == identifier).First().Name;
+            }
+            else
+            { 
+                _manifest.Files.Add(new() {
+                    Identifier = identifier,
+                    Name = strUuid
+                });;
+            }
 
             await File.WriteAllTextAsync(Path.Combine(_jsonStoreDirectory, strUuid), jsonFile, Encoding.UTF8);
             _cache.Set(identifier, jsonFile);
+            Unlock(identifier);
         }
 
         /// <summary>
         /// Get file with identifier.
         /// </summary>
         /// <param name="identifier">Unique string id</param>
-        /// <returns>null (no exact identifier file) or file content</returns>
+        /// <returns>null (no exact identifier file or locked) or file content</returns>
         public virtual async Task<string?> GetAsync(string identifier)
         {
+            if (_locks.ContainsKey(identifier) && _locks[identifier] == LockLevel.Exclusive)
+                return null;
+
             if (_cache.TryGetValue(identifier, out string cachedfile))
                 return cachedfile;
 
@@ -143,6 +176,9 @@ namespace JsonVault
         /// <returns>Success or not</returns>
         public virtual bool Delete(string identifier)
         {
+            if (_locks.ContainsKey(identifier) && _locks[identifier] != LockLevel.None)
+                return false;
+
             var file = _manifest.Files.Where(v => v.Identifier == identifier);
 
             if (file.Count() == 0)
@@ -166,6 +202,34 @@ namespace JsonVault
         public virtual bool Contains(string identifier)
         {
             return _manifest.Files.Any(v => v.Identifier == identifier);
+        }
+
+        public void Lock(string identifier, LockLevel lockLevel)
+        {
+            if (lockLevel == LockLevel.None)
+            { 
+                Unlock(identifier);
+                return;
+            }
+
+            if (_locks.ContainsKey(identifier))
+                _locks[identifier] = lockLevel;
+            else
+                _locks.Add(identifier, lockLevel);
+        }
+
+        public void Unlock(string identifier)
+        {
+            if (_locks.ContainsKey(identifier))
+                _locks.Remove(identifier);
+        }
+
+        public LockLevel GetLockStatus(string identifier)
+        {
+            if (_locks.ContainsKey(identifier))
+                return _locks[identifier];
+            else
+                return LockLevel.None;
         }
     }
 }

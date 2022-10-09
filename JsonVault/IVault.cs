@@ -17,5 +17,11 @@ namespace JsonVault
         public bool Delete(string identifier);
 
         public bool Contains(string identifier);
+
+        public void Lock(string identifier, LockLevel lockLevel);
+
+        public void Unlock(string identifier);
+
+        public LockLevel GetLockStatus(string identifier);
     }
 }

@@ -11,5 +11,7 @@ namespace JsonVault
         public Task<string?> GetAsync(string identifier);
 
         public Task AddAsync(string identifier, string jsonFile);
+
+        public Task UpdateAsync(string identifier, string jsonFile);
     }
 }

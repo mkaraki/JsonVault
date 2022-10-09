@@ -20,9 +20,12 @@ using (var vault = new JsonVault.JsonVault())
 
         if (cmd == "help")
         {
-            Console.WriteLine("@identifier filepath\t\tAdd file to vault\n" +
-                "%identifier\t\tRead file in vault\n" +
-                "*identifier\t\tDelete file in vault");
+            Console.WriteLine(
+                "@identifier filepath\t\tAdd file to vault\n" +
+                "$identifier filepath\t\tUpdate file in vault\n" +
+                "%identifier         \t\tRead file in vault\n" +
+                "*identifier         \t\tDelete file in vault"
+                );
             continue;
         }
 
@@ -32,13 +35,23 @@ using (var vault = new JsonVault.JsonVault())
             continue;
         }
 
-        var acmd = cmd.TrimStart('@', '%', '*').Split(' ');
+        var acmd = cmd.TrimStart('@', '%', '*', '$').Split(' ');
 
         if (cmd.StartsWith('@'))
         {
             if (acmd.Length != 2) continue;
 
             await vault.AddAsync(acmd[0], File.ReadAllText(acmd[1]));
+
+            Console.WriteLine("OK");
+
+            continue;
+        }
+        else if (cmd.StartsWith('$'))
+        {
+            if (acmd.Length != 2) continue;
+
+            await vault.UpdateAsync(acmd[0], File.ReadAllText(acmd[1]));
 
             Console.WriteLine("OK");
 

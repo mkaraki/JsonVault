@@ -8,6 +8,9 @@ namespace JsonVault
     {
         public override async Task<string?> GetAsync(string identifier)
         {
+            if (_locks.ContainsKey(identifier) && _locks[identifier] == LockLevel.Exclusive)
+                return null;
+
             if (_cache.TryGetValue(identifier, out string cachedfile))
                 return cachedfile;
 
@@ -37,6 +40,16 @@ namespace JsonVault
             if (Contains(identifier))
                 throw new Exception("Identifier already exist");
 
+            await UpdateAsync(identifier, jsonFile);
+        }
+
+        public override async Task UpdateAsync(string identifier, string jsonFile)
+        { 
+            if (_locks.ContainsKey(identifier) && _locks[identifier] != LockLevel.None)
+                throw new Exception("Locked");
+
+            Lock(identifier, LockLevel.Exclusive);
+
             using (var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(jsonFile)))
             {
                 var cbor = CBORObject.ReadJSON(jsonStream);
@@ -44,10 +57,17 @@ namespace JsonVault
                 Guid uuid = Guid.NewGuid();
                 string strUuid = uuid.ToString();
 
-                _manifest.Files.Add(new() {
-                    Identifier = identifier,
-                    Name = strUuid
-                });;
+                if (Contains(identifier))
+                {
+                    strUuid = _manifest.Files.Where(v => v.Identifier == identifier).First().Name;
+                }
+                else
+                { 
+                    _manifest.Files.Add(new() {
+                        Identifier = identifier,
+                        Name = strUuid
+                    });;
+                }
 
                 await Task.Run (() => {
                     using (var cborStream = new FileStream(Path.Combine(_jsonStoreDirectory, strUuid), FileMode.Create, FileAccess.Write))
@@ -56,6 +76,8 @@ namespace JsonVault
             }
 
             _cache.Set(identifier, jsonFile);
+
+            Unlock(identifier);
         }
     }
 }
