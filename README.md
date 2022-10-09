@@ -1,4 +1,7 @@
 # JsonVault
+
+[![](https://img.shields.io/nuget/v/JsonVault)](https://www.nuget.org/packages/JsonVault)
+
 Store and cache text data with unique identifier.
 
 ## How it works
