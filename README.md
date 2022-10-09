@@ -31,7 +31,7 @@ using (var vault = new JsonVault())
   else
   {
     // Create Vault `vault.json` (and save files into `files` directory)
-    await vault.CreateVaultAsync("vault.json", "files");
+    await vault.CreateVaultAsync("vault.json", "{\"Some\":\"Content\"}");
   }
   
   // Add content to vault
