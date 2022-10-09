@@ -43,6 +43,9 @@ using (var vault = new JsonVault())
   // Get content from vault
   var content = await vault.GetAsync("identifier");
   
+  // Add content in vault
+  await vault.UpdateAsync("identifier", "{\"Some\":\"Updated Content\"}");
+  
   // Delete content from vault
   vault.Delete("identifier");
   
