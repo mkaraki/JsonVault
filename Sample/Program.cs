@@ -38,7 +38,7 @@ using (var vault = new JsonVault.JsonVault())
         {
             if (acmd.Length != 2) continue;
 
-            await vault.AddAsync(acmd[0], File.ReadAllText(acmd[1], Encoding.UTF8), Encoding.UTF8);
+            await vault.AddAsync(acmd[0], File.ReadAllText(acmd[1]));
 
             Console.WriteLine("OK");
 
@@ -46,7 +46,7 @@ using (var vault = new JsonVault.JsonVault())
         }
         else if (cmd.StartsWith('%'))
         {
-            var file = await vault.GetAsync(acmd[0], Encoding.UTF8);
+            var file = await vault.GetAsync(acmd[0]);
 
             if (file == null) Console.WriteLine("No file found");
             else Console.WriteLine(file);
