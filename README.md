@@ -11,7 +11,7 @@ graph LR;
   
   Vault -. Identifier/UUID Table .-> Disk
   Vault-- UUID -->Disk
-  Disk-- Content -->Vault
+  Disk-- Compressed Content -->Vault
 ```
 
 ## Install
